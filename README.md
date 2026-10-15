@@ -1,13 +1,17 @@
 # MAIA — документация
 
 NOVA CORTEX / MAIA — Adaptive Signal Web.
-Система квалификации и памяти сигналов из AI/крипто среды.
+Система квалификации и памяти сигналов из среды AI research
+(arXiv, GitHub; OpenAlex как слой обогащения).
 
 Единая точка входа для LLM-моделей с web-доступом.
 
 ## ТЕКУЩИЙ ПРИОРИТЕТ
 
-Стабилизация ядра (см. ROADMAP.md, раздел "ПЛАН ВОССТАНОВЛЕНИЯ").
+Перестройка ведения документации (см. DECISIONS.md, раздел
+"ПЕРЕСТРОЙКА ВЕДЕНИЯ ДОКУМЕНТАЦИИ (2026-10)"). По системе: замер
+enrichment около 20-21.10 и вектор "закрепление хоста"
+(см. ROADMAP.md и RUNTIME.md).
 
 ## Документы (читать в этом порядке)
 
@@ -16,21 +20,25 @@ NOVA CORTEX / MAIA — Adaptive Signal Web.
 | CLAUDE.md | Точка входа | Читать первым | [CLAUDE.md](https://github.com/shaenxxx-commits/maia/blob/main/CLAUDE.md) |
 | RUNTIME.md | Состояние | Живое состояние системы | [RUNTIME.md](https://github.com/shaenxxx-commits/maia/blob/main/RUNTIME.md) |
 | INVARIANTS.md | Правила | Нельзя нарушать | [INVARIANTS.md](https://github.com/shaenxxx-commits/maia/blob/main/INVARIANTS.md) |
-| DECISIONS.md | История | Решения и обоснования | [DECISIONS.md](https://github.com/shaenxxx-commits/maia/blob/main/DECISIONS.md) |
+| DECISIONS.md | История | Решения и обоснования, матрица прав на документы | [DECISIONS.md](https://github.com/shaenxxx-commits/maia/blob/main/DECISIONS.md) |
 | ROADMAP.md | План | Этапы и приоритеты | [ROADMAP.md](https://github.com/shaenxxx-commits/maia/blob/main/ROADMAP.md) |
-| AUDIT_2026-07.md | Диагностика | Обязателен перед задачами с БД/n8n/nc_core.py/forwarder | [AUDIT_2026-07.md](https://github.com/shaenxxx-commits/maia/blob/main/AUDIT_2026-07.md) |
+| PROMPTS_CHAT_LAUNCH.md | Роли | Промпты и порядок запуска чатов | [PROMPTS_CHAT_LAUNCH.md](https://github.com/shaenxxx-commits/maia/blob/main/PROMPTS_CHAT_LAUNCH.md) |
+| AUDIT_2026-09-ФАНТОМЫ.md | Диагностика | Читать перед задачами с БД, n8n, nc_core.py, forwarder, credentials | [AUDIT_2026-09-ФАНТОМЫ.md](https://github.com/shaenxxx-commits/maia/blob/main/AUDIT_2026-09-%D0%A4%D0%90%D0%9D%D0%A2%D0%9E%D0%9C%D0%AB.md) |
+| AUDIT_2026-07.md | Снимок | Исторический аудит 2026-07, не обновляется | [AUDIT_2026-07.md](https://github.com/shaenxxx-commits/maia/blob/main/AUDIT_2026-07.md) |
+| CONFIG_PLAN_v1.5.md | Конфигурация | Конфигурация Claude-слоёв проекта | [CONFIG_PLAN_v1.5.md](https://github.com/shaenxxx-commits/maia/blob/main/CONFIG_PLAN_v1.5.md) |
 | TRANSITION.md | План перехода | Активен. Удалить только после завершения Шага 6 (DDA) | [TRANSITION.md](https://github.com/shaenxxx-commits/maia/blob/main/TRANSITION.md) |
 | VISION.md | Философия | Не рабочий документ, дальние горизонты | [VISION.md](https://github.com/shaenxxx-commits/maia/blob/main/VISION.md) |
+| HANDOFF.md | Снимок | Передача между чатами КОНЦЕПТ, не обновляется | [HANDOFF.md](https://github.com/shaenxxx-commits/maia/blob/main/HANDOFF.md) |
 
-Raw-вариант (голый текст, без HTML GitHub) — по шаблону:
-```
-GitHub: https://github.com/shaenxxx-commits/maia/blob/main/<FILE>
-Raw:    https://raw.githubusercontent.com/shaenxxx-commits/maia/main/<FILE>
-```
+Шаблон ссылок на отдельный файл:
 
-## ARCHIVE/ (второстепенные, не нужны для текущей стабилизации)
+    GitHub: https://github.com/shaenxxx-commits/maia/blob/main/<FILE>
+    Raw:    https://raw.githubusercontent.com/shaenxxx-commits/maia/main/<FILE>
 
-STACK_v10.5.md · PROMPTS_v3.3.md · CONFIG_PLAN_v1.5.md
+## ARCHIVE/ (второстепенные, не нужны для текущей работы)
+
+STACK_v10.5.md · PROMPTS_v3.4.md · CONFIG_PLAN_v1.5.md (историческая
+версия от 2026-05-31)
 
 ## Статус разделов
 
@@ -41,18 +49,18 @@ STACK_v10.5.md · PROMPTS_v3.3.md · CONFIG_PLAN_v1.5.md
 
 ## Синхронизация
 
-Сервер (`~/maia_project/docs/`) — источник истины. Этот
-репозиторий и claude.ai Projects — синхронные зеркала: любая
-правка вносится на сервер И сюда И в Projects в рамках одного
-цикла, без разрыва между источниками. Не оставлять зеркала
-устаревшими "до следующего раза" — именно это дважды создавало
-расхождение в предыдущем репозитории (см. posoh-docs: VISION.md
-был подменён контентом Sub-0, ROADMAP.md не содержал отметку
-о завершённом Шаге 4).
+Сервер (`~/maia_project/docs/`, репозиторий docs/.git) — источник
+истины. Этот репозиторий — зеркало: правка вносится на сервер и
+отправляется сюда администратором после санкции Архитектора или
+КОНЦЕПТ и после проверки на секреты (I7). Не оставлять зеркало
+устаревшим "до следующего раза".
 
-Last synced from server: pending verification
-(обновлять датой при каждом цикле синхронизации, не оставлять
-"pending" после первого реального цикла)
+claude.ai Projects не является обязательным зеркалом
+(решение Архитектора, DECISIONS.md, 2026-10-15); его использование
+не определено.
+
+Last synced from server: 2026-10-15
+(обновлять датой при каждом цикле синхронизации)
 
 ## Смежные проекты
 
@@ -61,7 +69,6 @@ Last synced from server: pending verification
 
 ## Временный статус
 
-Структура будет пересмотрена после завершения Шага 5 плана
-восстановления (ROADMAP.md). Пересмотр не означает автоматического
-удаления TRANSITION.md — его статус определяется отдельным
-условием (завершение Шага 6).
+Идёт перестройка ведения документации; структура этого файла и
+состав документов могут меняться. Статус TRANSITION.md определяется
+отдельным условием (завершение Шага 6).

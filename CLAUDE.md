@@ -30,7 +30,7 @@ AUDIT_2026-09-ФАНТОМЫ.md — полная картина фантомов
 На сервере: /home/shaen/maia_project/docs/
 GitHub: https://github.com/shaenxxx-commits/maia (зеркалит только
   docs/, не весь maia_project/)
-В claude.ai Projects: синхронные копии
+В claude.ai Projects: необязательная копия (DECISIONS.md, 2026-10-15)
 
 ---
 
