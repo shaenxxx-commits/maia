@@ -206,7 +206,7 @@ remote) существует отдельно от /home/shaen/maia_project/docs
  
 ## LLM (OpenRouter)
  
-Primary:  nvidia/nemotron-3-super-120b-a12b:free
+Primary:  nvidia/nemotron-3-ultra-550b-a55b:free (с 2026-10-26)
 Fallback: nvidia/nemotron-nano-9b-v2:free
  
 free_model_daily_requests = 1000/сутки — подтверждённый факт из API.
@@ -220,10 +220,12 @@ max_tokens поднят с 500 до 1500 (2026-10-02) — reasoning-модель
 тратила лимит на рассуждение. Квота считается в запросах, не в
 токенах.
  
-Мёртвые (не использовать): gpt-oss-120b:free, gpt-oss-20b:free,
-gemma-4-26b-a4b:free, gemma-4-31b-it:free, gemini-2.5-flash,
-llama-3.2-3b:free, mistral-7b:free. Также найден неидентифицированный
-остаток Groq-эпохи ("llama-3.1-8b-instant") в коде.
+Мёртвые (не использовать): nvidia/nemotron-3-super-120b-a12b:free
+(404 от Nvidia с 20.10; каталог OpenRouter её показывает),
+gpt-oss-120b:free, gpt-oss-20b:free, gemma-4-26b-a4b:free,
+gemma-4-31b-it:free, gemini-2.5-flash, llama-3.2-3b:free,
+mistral-7b:free. Также найден неидентифицированный остаток
+Groq-эпохи ("llama-3.1-8b-instant") в коде.
  
 N8N_API_KEY не используется nc_core.py — релевантен только для n8n
 Public API напрямую. Ротирован дважды: 12.09 и 29.09 — актуально
@@ -231,6 +233,57 @@ Public API напрямую. Ротирован дважды: 12.09 и 29.09 —
  
 ## АРХИТЕКТУРА СКОРИНГА
  
+### Простой 20-26.10 и смена модели (26.10)
+С 20.10 пошли ошибки OpenRouter: 20.10 — success 4, error 19,
+оценок за сутки 78; 21.10 — 43 запуска, оценок 0; 22-24.10
+запусков нет (ПК выключен, со слов Архитектора); 25.10 error 3,
+26.10 error 7. Оценок по updated_at с 21.10 по 26.10 до смены
+модели: 0. Ошибка: HTTP 404 на ноде "OpenRouter API", модель
+nvidia/nemotron-3-super-120b-a12b:free, provider_name Nvidia,
+текст "Function ... Not found for account ...". Воспроизведено
+пробным запросом 26.10: super-120b дал 404, ultra-550b дал 200
+(ключ, маршрут, аккаунт рабочие); модель при этом в публичном
+каталоге OpenRouter (target alive: True). Причина у провайдера
+не установлена. Workflow Analyzer не менялся с 2026-10-02
+(updatedAt 2026-10-02T10:11:47Z) — правкой не вызван.
+
+Проба замены (read-only, 20 статей, оценены 14-19.10, setseed 0.45,
+запросы последовательно): ultra-550b дал валидный JSON 20 из 20,
+finish_reason=length 0 из 20, средняя абс. разница с сохранённой
+оценкой 1,100 (медиана 1,0), доля ≥ 8 была 55%, стала 45%,
+время ответа медиана 19,0 с, максимум 31,5 с. Правило (задано
+заранее): разница 1,0-2,0 = «сдвиг», годится с оговоркой,
+граница по дате обязательна.
+
+Смена: 2026-10-26 21:21:54 +02:00. Скрипт ~/model_swap.py (sha256
+a5b23528dbef8bad72f0e10d9f9569ca5660f16e04e258822d666e21ec32bccf);
+первая версия (sha256 39e97b90...13ce, сохранена как
+~/model_swap_v1.py.bak) содержала дефект: замена не попадала в тело
+PUT; найден на ревью КОНЦЕПТ до запуска, применялась исправленная
+версия. Экспорт L3: backups/2026-10-26_pre_model_swap/
+wf_analyzer_before_model_swap.json (700/600, литеральных секретов 0).
+PUT status 200; versionId f7608825-2ad5-431f-ae6f-37dd2edf4342 →
+49b0b812-fd5e-4409-b075-66ddc0acbf78; activeVersionId равен новому
+versionId (F11); active True; узлов 7 до и после; OLD=0, NEW=1.
+Изменена только строка model в jsonBody ноды "OpenRouter API".
+
+Контроль (первые 5 запусков после смены, 21:30:35-22:30:35 +02:00):
+success 5, error 0, score_failed 0, новых оценок 25, из них ≥ 8: 3;
+в ответах model nvidia/nemotron-3-ultra-550b-a55b:free, provider
+Nvidia. Тело запроса n8n сохраняет только для ошибочных запусков,
+подтверждение модели — по ответу. Окно наблюдения ~1 ч 10 мин;
+устойчивость за сутки и лимит free-модели не измерены.
+Ошибки Analyzer в failures не попадают (I6) — простой не был
+замечен сразу.
+
+Срез скоринга на 26.10 (старая модель super-120b, n=6189 оценённых
+cs.AI/cs.LG): score ≥ 6 60,4%, ≥ 8 36,7%, ≥ 9 0,3%; pending_review
+14 524, из них старше 7 суток 11 695 (старейшая 21.09).
+
+Граница по дате: оценки до 2026-10-26 21:21:54 +02:00 даны
+super-120b, после — ultra-550b; старые не пересчитываются. Порог
+дайджеста пересматривается после накопления данных на новой модели.
+
 Analyzer (легаси-имя "MAIA DeepSeek Analyzer v3.0" — реально
 вызывает OpenRouter напрямую, пишет в PostgreSQL) — 7 нод (было 28).
 5 fetch-веток и IF relevant — структурные фантомы эпохи tg-001,
@@ -605,7 +658,12 @@ incoming_messages снесён (включая крипто-контент), Coi
 ⚠️ Telegram forwarder — 5 из 7 каналов не работают, не трогать до
    Шага 3 плана перестройки
 ⚠️ HackerNews — мёртв, решение не принято
-⚠️ I6 failures — Analyzer и сборщики не пишут в failures напрямую
+⚠️ I6 failures — Analyzer и сборщики не пишут в failures напрямую;
+   простой Analyzer 20-26.10 это показал: ошибки не попали
+⚠️ Нода «OpenRouter API»: не заданы timeout, retryOnFail, maxTries,
+   onError (дефолты n8n)
+⚠️ Новая модель ultra-550b: нет данных по устойчивости за сутки и
+   по лимиту free-модели (окно наблюдения ~1 ч 10 мин)
 ⚠️ cs.AI/cs.LG: hoursInterval=2 (не 15 минут), баг hours-триггера не
    переисследован
 ⚠️ /health отдаёт "telegram":"active" независимо от статуса
