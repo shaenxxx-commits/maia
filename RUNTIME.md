@@ -390,7 +390,7 @@ Postgres 15.17.
   resource_ledger    — 10 строк. Ручной журнал, без кодового
                        потребителя.
   architect_decision_log — 6 строк. Тот же статус.
-  failures            — 12 строк. Схема по факту: id serial,
+  failures            — 13 строк. Схема по факту: id serial,
                        action_hash text NULLABLE + UNIQUE, provider
                        text, error text, context JSON (НЕ jsonb),
                        timestamp without time zone default now().
@@ -399,7 +399,12 @@ Postgres 15.17.
                        openalex_enrich, 504 Gateway timeout, штатная
                        обработка. id 8-12 (11-21.10) — openalex_enrich:
                        EAI_AGAIN ×2, 504 ×2, 503 ×1 — штатная обработка
-                       ответов OpenAlex.
+                       ответов OpenAlex. id 13 — 21.10 13:33:57,
+                       provider forwarder, ошибка "buffer_reader loop:
+                       Connection to Telegram failed 5 time(s)", context
+                       {"function": "buffer_reader_loop"}. forwarder.py
+                       пишет в failures (INSERT INTO failures, стр. 51);
+                       mtime файла 2026-09-04 12:27:58.
                        ⚠️ I6 нарушен для сборщиков и Analyzer: их
                        ошибки в failures напрямую не попадают.
   agents               — 4 строки (3 тестовые + след audit-rch20).

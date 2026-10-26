@@ -1176,7 +1176,12 @@ git ls-remote origin refs/heads/main. Если хотя бы одно услов
 повторилась; на результат не влияет (привязка по doi); отдельный
 замер с пакетами по 5 не срочен. failures id 8-12 (11-21.10,
 openalex_enrich): EAI_AGAIN ×2, 504 ×2, 503 ×1 — штатная
-обработка; всего 12 строк. Темп: косвенно по enriched_at (n8n API
+обработка; всего 13 строк. Отдельно id 13 (21.10 13:33:57) —
+provider forwarder, ошибка "buffer_reader loop: Connection to
+Telegram failed 5 time(s)", context {"function":
+"buffer_reader_loop"}; к enrichment не относится (forwarder.py
+пишет в failures; mtime файла 2026-09-04). Темп: косвенно по
+enriched_at (n8n API
 не запрашивался), 6 суток из 15 почти нулевые (17, 18, 20, 22, 23,
 24.10); причина — ПК Архитектора выключен (со слов). Число
 запусков из замера не следует и с 96/сутки не сопоставляется.
