@@ -1,5 +1,5 @@
 # MAIA — RUNTIME
-Обновлён: 2026-10-27
+Обновлён: 2026-11-08
 Обновляет: КОНЦЕПТ после аудита / УЧ после значимой сессии
  
 ⚠️ Полная картина расхождений документ/реальность за 2026-07 →
@@ -220,7 +220,11 @@ free_model_daily_requests = 1000/сутки — подтверждённый ф�
 nc_core.py указывал на мёртвый "openai/gpt-oss-20b:free", fallback-
 порядок ставил мёртвые модели первыми. Теперь default →
 nvidia/nemotron-3-super-120b-a12b:free, живые модели первыми.
- 
+
+⚠️ Пометка 2026-11-08: запись историческая (2026-10-02). С 2026-10-26 21:21:54 +02:00
+primary — nvidia/nemotron-3-ultra-550b-a55b:free (см. ниже «АРХИТЕКТУРА СКОРИНГА»,
+подсекция «Простой 20-26.10 и смена модели»). super-120b — в списке мёртвых ниже.
+
 max_tokens поднят с 500 до 1500 (2026-10-02) — reasoning-модель
 тратила лимит на рассуждение. Квота считается в запросах, не в
 токенах.
@@ -296,10 +300,18 @@ super-120b, после — ultra-550b; старые не пересчитыва�
 разницы не установлена, окно узкое, судить при 300 и более
 оценках.
 
+Срез на новой модели до 30.10 (источник: передача КОНЦЕПТ
+2026-11-04): оценено 385, успешных 373 (relevant 195,
+irrelevant 178), score_failed 12; доля score ≥ 8 — 16,4%,
+≥ 9 — 0,8%; ≥ 8 у cs.AI 55 из 258, у cs.LG 6 из 115. Причина
+перекоса cs.AI/cs.LG не установлена.
+
 Analyzer (легаси-имя "MAIA DeepSeek Analyzer v3.0" — реально
-вызывает OpenRouter напрямую, пишет в PostgreSQL) — 7 нод (было 28).
-5 fetch-веток и IF relevant — структурные фантомы эпохи tg-001,
-вырезаны 2026-10-01.
+вызывает OpenRouter напрямую, пишет в PostgreSQL) — 10 узлов
+(7 после вырезания фантомов 2026-10-01, +3 журнальных узла I6
+применены 2026-10-28; versionId e3f8dd52-5b3b-4008-bb05-61da5b0b8928,
+active True). 5 fetch-веток и IF relevant — структурные фантомы
+эпохи tg-001, вырезаны 2026-10-01.
  
 ⚠️ Переименование workflow признано безопасным (0 вхождений имени как
 зависимости в проверенных местах), но SQLite n8n и
@@ -328,7 +340,19 @@ Cron-узел "30sec" фактически срабатывал раз в мин
 сознательно не оцениваются (I5). Техническая мера (статус
 "archived_unscored" для pending_review старше N дней, явный UPDATE по
 id) — не реализована.
- 
+
+### I6 в Analyzer — применён 2026-10-28
+Активный PUT 28.10: workflow wLhFlkvOR4skwPQo, 10 узлов (7 после
+вырезания фантомов 2026-10-01, +3 журнальных), versionId
+e3f8dd52-5b3b-4008-bb05-61da5b0b8928, active True.
+Контроль по executions: пары «запуск журнального узла → строка
+failures» — 27745→id 16, 27768→id 17. Вердикт: РАБОТАЕТ.
+Ограничение: ON CONFLICT по action_hash (provider+код+текст+час)
+схлопывает повторы в одном часе; failures показывает события, а не
+число потерянных статей.
+Ветка Format node error (ошибка узла OpenRouter) в бою не
+срабатывала.
+
 ## N8N — СТАТУС ИСТОЧНИКОВ
  
 Приоритет источников в "PG Read pending" (CASE arxiv/hackernews →
@@ -392,7 +416,35 @@ N8N_API_KEY — рабочий (значение от 29.09). n8n Public API: PA
 Variables: HTTP 403. В env контейнера n8n переменных MAIA_* нет.
 ⚠️ Вывод /credentials содержит личный email владельца (I7) — не
 печатать.
- 
+
+### Workflow «MAIA Pulse» (id feO6o5leFOJREydC)
+Создан 03.11 скриптом ~/pulse_workflow_create.py v6
+(sha256 1ab5e0087582a0cc14d62ed3b20285ed2c5c6f73297d2670065919f69ac6bd58,
+363 строки, 20396 байт). 14 узлов, active=False, versionId
+def4d40c-c5e6-4120-a6ae-b1e64f12a52c. Расписание: минуты,
+интервал 30. Экспорт: ~/maia_project/backups/wf_maia_pulse_20261103.json
+(16761 байт, права 600, sha256 afa286931595c42251a84d5152ed6adeb505d3807a2e85beead42b4389164351).
+Кандидаты на диске (не применены): ~/pulse_workflow_create_v7.py —
+sha256 80d97370b7260fe1a8d237a0359a721f7184b0e1fde69b427809db1f53bd364c,
+393 строки / 22426 байт; ~/pulse_workflow_update.py v2 —
+sha256 124bee4e77700fed47bbb06a672e987fd80941fbb42565cdd82999c2e9aafdcf,
+201 строка / 8776 байт.
+Поведение executions: pulse_insert упал в 28090 и в
+28093/28099/28101; failures pulse — в 28093/28099/28101.
+Причина: splitExpression режет выражение по первой паре }}, а в
+queryReplacement есть вложенный }}. Лечение v7: пробел между
+скобками (} }). Причина потери подчёркиваний в Telegram-сводке:
+при пустом parse_mode n8n подставляет Markdown
+(GenericFunctions.js:28-29). Лечение v7: parse_mode HTML +
+экранирование &,<,>. Подпись «sent automatically with n8n» убрана
+(appendAttribution false). Причина ошибки Telegram в
+28093/28099/28101 — НЕИЗВЕСТНО (вернулся только error:str).
+
+### Credential n8n — только id
+«MAIA Notifier Bot» — id VfyxOKPqufFLW88j, тип telegramApi.
+«Postgres account» — id Vf0XETwZzK1j2um6, тип postgres. Регистр
+букв важен. Значения секретов не вносятся (I7).
+
 ## ДРУГИЕ ИСТОЧНИКИ
  
 Telegram forwarder — реально работают 2 из 7 каналов:
@@ -455,7 +507,25 @@ Postgres 15.17.
   resource_ledger    — 10 строк. Ручной журнал, без кодового
                        потребителя.
   architect_decision_log — 6 строк. Тот же статус.
-  failures            — 13 строк. Схема по факту: id serial,
+  failures            — 22 строки (id 1–25; id 14, 18, 24 в
+                       текущем выводе отсутствуют, причина не
+                       расследована). Исторические (по выводу SELECT
+                       от 08.11): id 1 — human_reject, 23.02;
+                       id 2 — test error from hooks, 06.05,
+                       провайдер не указан; id 3 — _rescore_suggest
+                       (uuid = integer), 06.05, провайдер не указан,
+                       по AUDIT_2026-07 — ошибка /challenge; id 4 —
+                       test (РЧ1), 04.09; id 5 — forwarder, 27.09.
+                       id 6 — тест (ENOTFOUND api.openalex.invalid);
+                       id 7–13 — openalex_enrich и forwarder
+                       09.10–21.10. id 15 — analyzer_openrouter,
+                       ENOTFOUND openrouter.invalid (тестовая по
+                       домену). id 16, 17 — 29.10, analyzer_parse,
+                       «Service temporarily…» — журнальные I6 (см.
+                       «АРХИТЕКТУРА СКОРИНГА», «I6 в Analyzer»).
+                       id 19–25 — 01.11: analyzer_parse (19, 23, 25),
+                       analyzer_openrouter (22, EAI_AGAIN), forwarder
+                       (20), openalex_enrich (21). Схема по факту: id serial,
                        action_hash text NULLABLE + UNIQUE, provider
                        text, error text, context JSON (НЕ jsonb),
                        timestamp without time zone default now().
@@ -494,7 +564,19 @@ Postgres 15.17.
  
 resonance_trust, virtual_credits — физически НЕ СУЩЕСТВУЮТ. STACK v10.5
 (архив) называет их "реализованными".
- 
+
+### pulse_log и pulse_config (созданы 01.11.2026)
+Созданы 01.11 скриптом ~/pulse_apply.py v8
+(sha256 3c8065966daec780b36836f790760326798c603a59e207cb25ff43b5ed8eb842,
+395 строк, 19918 байт), применён Архитектором. L3-бэкап:
+backups/2026-11-01_pre_pulse/ (дамп maia_memory.dump 11962097 байт,
+sha256 ebbef018ccbb226e2a7b5143ad0bd73c5faadb4a9f907730bbc5bc432164bbc1;
+9 workflow в workflows/; SHA256SUMS; секретов 0).
+pulse_log: 6 колонок, 3 ограничения; статус pending|sent; UNIQUE(d).
+На 04.11 (по отчёту АДМ) — 0 строк; на 08.11 не проверялось.
+pulse_config: 4 колонки; telegram_chat_id — длина 10 (значение в
+документы не вносится, I7).
+
 FK — ни одного. UNIQUE — agents(agent_id), failures(action_hash),
 incoming_messages(md5(norm_text)), paper_entities(arxiv_id) WHERE NOT
 NULL.
@@ -704,7 +786,10 @@ incoming_messages снесён (включая крипто-контент), Coi
 ⚠️ I6 failures — Analyzer и сборщики не пишут в failures напрямую;
    простой Analyzer 20-26.10 это показал: ошибки не попали
 ⚠️ Нода «OpenRouter API»: не заданы timeout, retryOnFail, maxTries,
-   onError (дефолты n8n)
+   onError (дефолты n8n); 29.10–01.11 пять записей analyzer_parse:
+   id 16, 17 — «Upstream error from Nvidia: Service temporarily
+   overloaded» (29.10); id 19 — «Internal server error»;
+   id 23, 25 — «Service temporarily overloaded» (01.11)
 ⚠️ Новая модель ultra-550b: нет данных по устойчивости за сутки и
    по лимиту free-модели (окно наблюдения ~1 ч 10 мин)
 ⚠️ cs.AI/cs.LG: hoursInterval=2 (не 15 минут), баг hours-триггера не
@@ -733,6 +818,13 @@ incoming_messages снесён (включая крипто-контент), Coi
 ⚠️ Не измерено: БП, BootOrder-запись Ubuntu/Windows, таймаут GDM,
    рост БД/томов и пики, NVMe self-test, статус smartd, расход
    кредитов OpenAlex из n8n
+⚠️ Ротация пароля БД не проводилась (AUDIT_2026-09, п. 9.4) —
+   решение за Архитектором
+⚠️ Сбор arXiv 29.10 проверен частично: один запуск, все 407 id
+   уже в БД, потерь не обнаружено; проверка попадания статей,
+   объявленных 29.10, не выполнена
+⚠️ Ошибка Telegram в executions 28093/28099/28101 (03.11) —
+   только error:str, текст не измерен (НЕИЗВЕСТНО)
  
 ENRICHMENT (см. раздел ENTITY-СЛОЙ): причина ненахождения части
 статей в OpenAlex, причина нестабильной привязки, причина посторонних
