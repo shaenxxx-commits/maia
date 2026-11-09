@@ -420,25 +420,31 @@ Variables: HTTP 403. В env контейнера n8n переменных MAIA_*
 ### Workflow «MAIA Pulse» (id feO6o5leFOJREydC)
 Создан 03.11 скриптом ~/pulse_workflow_create.py v6
 (sha256 1ab5e0087582a0cc14d62ed3b20285ed2c5c6f73297d2670065919f69ac6bd58,
-363 строки, 20396 байт). 14 узлов, active=False, versionId
-def4d40c-c5e6-4120-a6ae-b1e64f12a52c. Расписание: минуты,
-интервал 30. Экспорт: ~/maia_project/backups/wf_maia_pulse_20261103.json
+363 строки, 20396 байт). Заменён на v8 09.11 (PUT v3, выполнил
+Архитектор, exit 0; versionId def4d40c-c5e6-4120-a6ae-b1e64f12a52c →
+93dc2c77-aca5-4468-bb87-6c4331bf7d70). 15 узлов, 11 connections.
+Ключевое в v8: узел «IF insert ok» между pulse_insert и
+telegram_send (условие $json.success equals true; ветка false идёт
+в failures pulse без отправки), parse_mode HTML + экранирование
+&,<,>, appendAttribution false, onError continueRegularOutput у
+pulse_insert, пробел между закрывающими скобками в вложенных
+выражениях (} }), чтобы splitExpression не резал по первой паре }}.
+Ручной запуск 28177: success, сводка за 2026-11-06 доставлена в
+Telegram, в pulse_log одна строка sent, новых failures нет.
+Расписание (минуты, интервал 30) включено Архитектором осознанно;
+по его слову он перед этим выключил Active и сделал ещё один
+прогон, состояние после этого командой не проверено ([СО СЛОВ]).
+Экспорт v6: ~/maia_project/backups/wf_maia_pulse_20261103.json
 (16761 байт, права 600, sha256 afa286931595c42251a84d5152ed6adeb505d3807a2e85beead42b4389164351).
-Кандидаты на диске (не применены): ~/pulse_workflow_create_v7.py —
+Кандидаты на диске: ~/pulse_workflow_create_v7.py —
 sha256 80d97370b7260fe1a8d237a0359a721f7184b0e1fde69b427809db1f53bd364c,
 393 строки / 22426 байт; ~/pulse_workflow_update.py v2 —
 sha256 124bee4e77700fed47bbb06a672e987fd80941fbb42565cdd82999c2e9aafdcf,
 201 строка / 8776 байт.
-Поведение executions: pulse_insert упал в 28090 и в
-28093/28099/28101; failures pulse — в 28093/28099/28101.
-Причина: splitExpression режет выражение по первой паре }}, а в
-queryReplacement есть вложенный }}. Лечение v7: пробел между
-скобками (} }). Причина потери подчёркиваний в Telegram-сводке:
-при пустом parse_mode n8n подставляет Markdown
-(GenericFunctions.js:28-29). Лечение v7: parse_mode HTML +
-экранирование &,<,>. Подпись «sent automatically with n8n» убрана
-(appendAttribution false). Причина ошибки Telegram в
-28093/28099/28101 — НЕИЗВЕСТНО (вернулся только error:str).
+Причина прошлых ошибок: executions 28099 и 28101 — Bad Request
+«can't parse entities» (Markdown по умолчанию, 7 подчёркиваний в
+тексте); 28093 — сетевой обрыв соединения, причина обрыва
+НЕИЗВЕСТНО. Лечение в v8: parse_mode HTML + экранирование.
 
 ### Credential n8n — только id
 «MAIA Notifier Bot» — id VfyxOKPqufFLW88j, тип telegramApi.
@@ -507,7 +513,7 @@ Postgres 15.17.
   resource_ledger    — 10 строк. Ручной журнал, без кодового
                        потребителя.
   architect_decision_log — 6 строк. Тот же статус.
-  failures            — 22 строки (id 1–25; id 14, 18, 24 в
+  failures            — 23 строки (id 1–26; id 14, 18, 24 в
                        текущем выводе отсутствуют, причина не
                        расследована). Исторические (по выводу SELECT
                        от 08.11): id 1 — human_reject, 23.02;
@@ -525,7 +531,9 @@ Postgres 15.17.
                        «АРХИТЕКТУРА СКОРИНГА», «I6 в Analyzer»).
                        id 19–25 — 01.11: analyzer_parse (19, 23, 25),
                        analyzer_openrouter (22, EAI_AGAIN), forwarder
-                       (20), openalex_enrich (21). Схема по факту: id serial,
+                       (20), openalex_enrich (21). id 26 — 09.11
+                       20:35:15, analyzer_parse, «Body error: A Timeout
+                       Occurred» (до PUT v3). Схема по факту: id serial,
                        action_hash text NULLABLE + UNIQUE, provider
                        text, error text, context JSON (НЕ jsonb),
                        timestamp without time zone default now().
@@ -573,7 +581,8 @@ backups/2026-11-01_pre_pulse/ (дамп maia_memory.dump 11962097 байт,
 sha256 ebbef018ccbb226e2a7b5143ad0bd73c5faadb4a9f907730bbc5bc432164bbc1;
 9 workflow в workflows/; SHA256SUMS; секретов 0).
 pulse_log: 6 колонок, 3 ограничения; статус pending|sent; UNIQUE(d).
-На 04.11 (по отчёту АДМ) — 0 строк; на 08.11 не проверялось.
+На момент запуска 28177 (09.11) — 1 строка sent (d=2026-11-06);
+дальнейшее не измерено.
 pulse_config: 4 колонки; telegram_chat_id — длина 10 (значение в
 документы не вносится, I7).
 
@@ -789,7 +798,8 @@ incoming_messages снесён (включая крипто-контент), Coi
    onError (дефолты n8n); 29.10–01.11 пять записей analyzer_parse:
    id 16, 17 — «Upstream error from Nvidia: Service temporarily
    overloaded» (29.10); id 19 — «Internal server error»;
-   id 23, 25 — «Service temporarily overloaded» (01.11)
+   id 23, 25 — «Service temporarily overloaded» (01.11);
+   id 26 (09.11) — «Body error: A Timeout Occurred»
 ⚠️ Новая модель ultra-550b: нет данных по устойчивости за сутки и
    по лимиту free-модели (окно наблюдения ~1 ч 10 мин)
 ⚠️ cs.AI/cs.LG: hoursInterval=2 (не 15 минут), баг hours-триггера не
@@ -823,8 +833,6 @@ incoming_messages снесён (включая крипто-контент), Coi
 ⚠️ Сбор arXiv 29.10 проверен частично: один запуск, все 407 id
    уже в БД, потерь не обнаружено; проверка попадания статей,
    объявленных 29.10, не выполнена
-⚠️ Ошибка Telegram в executions 28093/28099/28101 (03.11) —
-   только error:str, текст не измерен (НЕИЗВЕСТНО)
  
 ENRICHMENT (см. раздел ENTITY-СЛОЙ): причина ненахождения части
 статей в OpenAlex, причина нестабильной привязки, причина посторонних
