@@ -1,5 +1,5 @@
 # MAIA — RUNTIME
-Обновлён: 2026-11-09
+Обновлён: 2026-11-10
 Обновляет: КОНЦЕПТ после аудита / УЧ после значимой сессии
  
 ⚠️ Полная картина расхождений документ/реальность за 2026-07 →
@@ -442,6 +442,66 @@ Telegram, в pulse_log одна строка sent, новых failures нет.
 тексте); 28093 — сетевой обрыв соединения, причина обрыва
 НЕИЗВЕСТНО. Лечение в v8: parse_mode HTML + экранирование.
 
+### Workflow «MAIA Digest» и таблица digest_log
+Создано 10.11. Таблица digest_log: 8 колонок (id serial PK, d date,
+article_id integer, kind text default 'top', status text default
+'pending', payload jsonb, sent_at timestamptz, created_at timestamptz),
+UNIQUE (article_id), CHECK kind IN (top, probe), CHECK status IN
+(pending, sent), индексы по d и status. Скрипт создания:
+~/digest_log_create_v2.sql (sha256 9a3b20d2cf20b5d4aa3ed7f02aeb639eb51f95adda42fdc27921e0c0671323d9,
+47 строк / 3095 байт). Только добавление строк (I2), UPDATE только
+pending→sent и перезапись pending при повторной вставке.
+
+Workflow «MAIA Digest», id AFNTI7dZuu2RNF6b, versionId
+60a2671d-8980-4559-9099-077dc7021e0b, 22 узла, 15 connections.
+Создан 10.11 скриптом ~/digest_workflow_create_v2.py (sha256
+9396c0bb27af402474eb9cd456f09f066549d7f3c554b3d121afff063dcc2e3d,
+407 строк / 22815 байт), POST через Python (L7), без активации.
+Credentials: Postgres Vf0XETwZzK1j2um6, Telegram VfyxOKPqufFLW88j.
+
+Схема: триггер каждые 30 минут; выпуск раз в сутки при первом
+запуске после 09:00 Europe/Kyiv, если за сегодня нет sent-строк;
+пул — arxiv_cs_ai и arxiv_cs_lg (оценки новой модели с 26.10, без
+meta.groq.rescored, статусы relevant/irrelevant/processed, Announce
+Type не replace и не replace-cross, received_at не старше 7 суток,
+статьи нет в digest_log как sent); топ-15 по score без порога; при
+равных score cs.AI и cs.LG чередуются, внутри источника свежие
+вперёд; по понедельникам — проба из 3–5 случайных отсечённых
+статей (kind probe). Без LLM. Сообщение: parse_mode HTML,
+экранирование &, <, >, до 4096 символов. Названия статей — на
+английском (решение Архитектора 10.11, известное ограничение, не
+задача).
+
+Защита от повторов и блэкаутов: статьи при сбое отправки остаются
+pending и возвращаются в пул; update sent отмечает только id этого
+выпуска; узел «IF insert ok» перед Telegram; ошибка запроса пула
+пишется в failures (provider digest_pool), пустой пул не пишется.
+Обрыв питания между отправкой и отметкой sent даёт один повтор
+сводки («хотя бы один раз»). Окно пула 7 суток: при простое дольше
+недели статьи выпадают. Граница суток: худший случай — пропуск дня,
+не дубль.
+
+Ручной запуск 28209 (10.11, 13:23 EET): success, все узлы по
+true-веткам, Telegram ok=true, длина текста 2251, в digest_log 15
+строк sent (d 2026-11-10, kind top), pending 0; все 15 статей в
+incoming_messages со score и Announce Type не replace/replace-cross;
+новых failures нет; Digest остался active=False; Analyzer и MAIA
+Pulse не тронуты.
+
+L3-бэкап: ~/maia_project/backups/2026-11-10_pre_digest/ (дамп
+maia_memory 13552248 байт, права 600; экспорт 9 workflow;
+SHA256SUMS; секретов 0; каталог 700).
+
+Данные для графика: на 10.11 пул — 29 статей; до этого сводка за
+день на новой модели собиралась из 145–201 оценённых статей.
+failures max id = 29 на 10.11 по отчёту АДМ MS 204; содержимое
+id 27–29 в отчёты не вошло — НЕИЗВЕСТНО.
+
+Расписание: [СО СЛОВ Архитектора] Active включён («Active включен,
+передавай контрольную точку АРХИВАТОРУ», 10.11.2026); командой
+состояние active не проверено. Первый выпуск по расписанию ожидается
+11.11 после 09:00; сегодняшний выпуск уже в журнале.
+
 ### Credential n8n — только id
 «MAIA Notifier Bot» — id VfyxOKPqufFLW88j, тип telegramApi.
 «Postgres account» — id Vf0XETwZzK1j2um6, тип postgres. Регистр
@@ -581,6 +641,10 @@ pulse_log: 6 колонок, 3 ограничения; статус pending|sent
 дальнейшее не измерено.
 pulse_config: 4 колонки; telegram_chat_id — длина 10 (значение в
 документы не вносится, I7).
+
+digest_log: 8 колонок, 2 CHECK, UNIQUE (article_id), индексы по d и
+status; на момент запуска 28209 (10.11) — 15 строк sent
+(d 2026-11-10, kind top), pending 0; дальнейшее не измерено.
 
 FK — ни одного. UNIQUE — agents(agent_id), failures(action_hash),
 incoming_messages(md5(norm_text)), paper_entities(arxiv_id) WHERE NOT
@@ -829,6 +893,12 @@ incoming_messages снесён (включая крипто-контент), Coi
 ⚠️ Сбор arXiv 29.10 проверен частично: один запуск, все 407 id
    уже в БД, потерь не обнаружено; проверка попадания статей,
    объявленных 29.10, не выполнена
+⚠️ Дайджест — сообщение на английском (названия arXiv не
+   переводятся; решение Архитектора 10.11, не задача)
+⚠️ Окно пула дайджеста — 7 суток: при простое дольше недели
+   статьи выпадают (не задача)
+⚠️ Обрыв между отправкой и отметкой sent в дайджесте допускает
+   один повтор сводки («хотя бы один раз»)
  
 ENRICHMENT (см. раздел ENTITY-СЛОЙ): причина ненахождения части
 статей в OpenAlex, причина нестабильной привязки, причина посторонних
