@@ -923,6 +923,7 @@ incoming_messages снесён (включая крипто-контент), Coi
 ⚠️ watchdog_new.sh ("v2") — внедрить или архивировать
 ⚠️ Groq-логика в watchdog.sh — фантом
 ⚠️ maia-lab-sentinel — решение "архивировать" не выполнено
+⚠️ nc_glances — порт на localhost не закрыт
 ⚠️ LibreChat (5 контейнеров) остановлена, судьба томов не решена;
    том portainer_data без контейнера
 ⚠️ notify_news_loop/mtime nc_core.py расхождение — не расследовано
