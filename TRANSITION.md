@@ -75,6 +75,8 @@ Free · OpenRouter API подключён · 6 живых бесплатных �
 Задача: эндпоинт nc_core.py GET /topology/data (container_status,
 sources, scoring, llm) · React-приложение · порт 3002 или встроено
 в LibreChat
+Реализовано 13.11 службой MAIA Map (127.0.0.1:3002), не React
+(DECISIONS.md, «Живая схема MAIA Map — отдельная служба, принята»)
 Время: 2-3 сессии
 
 ---
