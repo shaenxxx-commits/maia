@@ -1,5 +1,5 @@
 # MAIA — RUNTIME
-Обновлён: 2026-11-13
+Обновлён: 2026-11-15
 Обновляет: КОНЦЕПТ после аудита / УЧ после значимой сессии
  
 ⚠️ Полная картина расхождений документ/реальность за 2026-07 →
@@ -377,13 +377,15 @@ hoursInterval=2 (updatedAt cs.AI 29.09, cs.LG 25.09), а не 15 минут,
                        абстрактах при pgp.helpers.concat с values=[];
                        исправлено параметризованным запросом.
   github_trending   — активен.
-  hackernews        — workflow активен, но падает с ошибкой (последний
-                       запуск 12.11 14:00 — error; см. MAIA Map).
-                       Ошибки в failures не попадают (I6 для сборщиков
-                       не выполнен). По прежним данным — МЁРТВ с
-                       2026-06-12, hnrss.org/newest?q= даёт 0 items;
-                       сейчас workflow активен, но падает с ошибкой.
-                       Решение не принято.
+  hackernews        — ВЫКЛЮЧЕН 14.11 (POST /deactivate, active=False;
+                       versionId 79ad8376-251a-4202-af25-c52b958861e9,
+                       не менялся). Причина: hnrss.org отдаёт 502
+                       (30.10–14.11: 66 из 100 сохранённых запусков —
+                       «Status code 502» на узле HN RSS; прямой запрос
+                       14.11 — HTTP 502). Отказ внешнего сервиса.
+                       Источник позже подключается другим путём
+                       (прямой интерфейс HackerNews), отдельным
+                       решением.
   coingecko         — ОСТАНОВЛЕН (19.09), active=false, не удалён,
                        существует без функции намеренно.
   cointelegraph     — работает через forwarder.py (Telegram).
@@ -556,6 +558,57 @@ R1AoF8dqm1TNFpMd) Архитектор отверг как неподходящ�
 Решение Архитектора: схема строится отдельной службой, а не
 React-приложением по адресу /topology/data в nc_core.py (L14, I14).
 
+## MAIA Error Logger и errorWorkflow (15.11.2026)
+Workflow «MAIA Error Logger» (id v6Pmqi78sAzDOHwf, versionId
+744e03f1-b7ed-4937-b0b5-f30191949c3f, 3 узла: Error Trigger →
+Format failure → PG Insert Failures). ДОЛЖЕН быть активен
+(active=True): неактивный n8n не запускает (доказано тестом).
+Своего расписания нет. Пишет в failures: provider по имени workflow
+(arxiv_cs_ai, arxiv_cs_lg, github_trending, hackernews, coingecko,
+test_collector, прочее — workflow_<имя>); error — первая строка до
+300 символов; context — workflow (id, name), id запуска, mode,
+lastNodeExecuted, error_type; action_hash = md5(provider | узел |
+первые 100 символов error | час UTC), то есть одна запись в час на
+одинаковую ошибку. Скрипт ~/error_logger_create.py
+(sha256 42ed5f9252954a004b290c398558f10802740435e277256aba1313aa6bb8908a,
+167 строк / 7746 байт).
+
+В настройки трёх сборщиков добавлен settings.errorWorkflow =
+v6Pmqi78sAzDOHwf (PUT через Python 15.11 ~00:08 по местному):
+«MAIA — ArXiv cs.AI» (98Y9HRlPQMsWx2bG, versionId
+5a9a095a-baf5-448c-bae5-219c6143abdf), «MAIA — ArXiv cs.LG»
+(n506mC37M7R81dqk, 1780c6f8-a8b6-434a-890a-d353fa99487e), «MAIA —
+GitHub Trending AI/Agents» (TRuIG3OhBJ9ykdY0,
+034703bc-5a5f-4c33-abea-cdbbc62f8ef9); у всех versionId равен
+activeVersionId, узлы, связи и расписание не менялись (хеши
+совпали). Скрипт ~/errorwf_set.py
+(sha256 43b82f9d013b687f224a4a7ea3203c872ea1b2d25370fafef2ed4b0808812d5c,
+114 / 5058). L3-экспорт: ~/maia_project/backups/2026-11-14_pre_i6/
+и .../2026-11-14_pre_errorwf/ (права 600, секретов 0).
+
+Особенности API n8n 2.18.7: PUT отклоняет поле active (400;
+включение и выключение — POST /activate и /deactivate); PUT
+отклоняет ключ binaryMode в settings (400; n8n ставит его сам),
+поэтому в PUT передаются только executionOrder, callerPolicy,
+errorWorkflow (на GitHub первый PUT дал 400, повтор с фильтром —
+200).
+
+Временный «MAIA TEST error source» (hq1X4LrJJnOCjOIG, versionId
+8747e576-223f-43c3-beb2-bc357da5dc58, active=False; скрипт
+~/test_error_source_create.py,
+sha256 a59bc414df0c84d0261a77e6fd112af7338cc5b111a162fe11cbf336d2d914f1):
+тест 14.11 дал запись failures id 34, provider test_collector
+(остаётся навсегда, I2); 5 падений за час дали одну запись.
+failures max id = 34 на 15.11 (число строк таблицы не измерялось).
+
+Ограничения: журнал ловит только ошибку запуска; пустой ответ
+источника без ошибки (например пустая лента arXiv 12.11) не
+ловится. errorWorkflow не прописан в Pulse, Digest, Analyzer,
+Enrich (у Analyzer свой журнал ошибок внутри). НЕ ПРОВЕРЕНО:
+срабатывание журнала на реальной ошибке сборщика; запуск сборщиков
+по расписанию (hoursInterval 2) после PUT, ожидался около 14.11
+23:00 UTC; проверить при ближайшем контроле.
+
 ## ДРУГИЕ ИСТОЧНИКИ
  
 Telegram forwarder — реально работают 2 из 7 каналов:
@@ -638,7 +691,11 @@ Postgres 15.17.
                        analyzer_openrouter (22, EAI_AGAIN), forwarder
                        (20), openalex_enrich (21). id 26 — 09.11
                        20:35:15, analyzer_parse, «Body error: A Timeout
-                       Occurred» (до PUT v3). Схема по факту: id serial,
+                       Occurred» (до PUT v3). id 34 — 14.11,
+                       test_collector (временный TEST workflow; см.
+                       «MAIA Error Logger и errorWorkflow»); max id 34
+                       на 15.11 по отчёту АДМ, число строк не
+                       измерялось. Схема по факту: id serial,
                        action_hash text NULLABLE + UNIQUE, provider
                        text, error text, context JSON (НЕ jsonb),
                        timestamp without time zone default now().
@@ -653,8 +710,13 @@ Postgres 15.17.
                        {"function": "buffer_reader_loop"}. forwarder.py
                        пишет в failures (INSERT INTO failures, стр. 51);
                        mtime файла 2026-09-04 12:27:58.
-                       ⚠️ I6 нарушен для сборщиков и Analyzer: их
-                       ошибки в failures напрямую не попадают.
+                       ✅ I6 для трёх сборщиков (arXiv cs.AI, cs.LG,
+                       GitHub Trending) — с 15.11 ошибки запусков
+                       пишутся в failures через «MAIA Error Logger»
+                       (errorWorkflow); HackerNews выключен, CoinGecko
+                       неактивен. Пустой ответ источника без ошибки не
+                       ловится. У Analyzer свой журнал ошибок внутри,
+                       errorWorkflow не прописан.
   agents               — 4 строки (3 тестовые + след audit-rch20).
                        Удалять нельзя (I2). pubkey всегда NULL.
   event_chain           — 0 строк. Таблица существует, код её не
@@ -903,11 +965,14 @@ incoming_messages снесён (включая крипто-контент), Coi
    (480/сутки) — решение принято, archived_unscored не реализован
 ⚠️ Telegram forwarder — 5 из 7 каналов не работают, не трогать до
    Шага 3 плана перестройки
-⚠️ HackerNews — workflow активен и падает с ошибкой (12.11 14:00);
-   ошибки в failures не попадают (I6 для сборщиков не выполнен);
-   решение не принято
-⚠️ I6 failures — Analyzer и сборщики не пишут в failures напрямую;
-   простой Analyzer 20-26.10 это показал: ошибки не попали
+⚠️ HackerNews — выключен 14.11 (hnrss.org отдаёт 502); при
+   выключенном workflow ошибок не возникает, источник подключается
+   другим путём отдельным решением
+⚠️ I6 failures — Analyzer пишет в failures через свой журнал
+   внутри; три сборщика (arXiv cs.AI, cs.LG, GitHub Trending)
+   пишут через errorWorkflow; пустой ответ источника без ошибки
+   не ловится; не проверены срабатывание журнала на реальной
+   ошибке сборщика и запуск сборщиков по расписанию после PUT
 ⚠️ Нода «OpenRouter API»: не заданы timeout, retryOnFail, maxTries,
    onError (дефолты n8n); 29.10–01.11 пять записей analyzer_parse:
    id 16, 17 — «Upstream error from Nvidia: Service temporarily
