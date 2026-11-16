@@ -358,6 +358,8 @@ id) — не реализована.
 Активный PUT 28.10: workflow wLhFlkvOR4skwPQo, 10 узлов (7 после
 вырезания фантомов 2026-10-01, +3 журнальных), versionId
 e3f8dd52-5b3b-4008-bb05-61da5b0b8928, active True.
+⚠️ 16.11 versionId изменён (см. «Очередь Analyzer с 16.11»);
+e3f8dd52-... — история.
 Контроль по executions: пары «запуск журнального узла → строка
 failures» — 27745→id 16, 27768→id 17. Вердикт: РАБОТАЕТ.
 Ограничение: ON CONFLICT по action_hash (provider+код+текст+час)
@@ -366,10 +368,38 @@ failures» — 27745→id 16, 27768→id 17. Вердикт: РАБОТАЕТ.
 Ветка Format node error (ошибка узла OpenRouter) в бою не
 срабатывала.
 
+### Очередь Analyzer с 16.11
+Запрос «PG Read pending» заменён: 3 подзапроса UNION ALL (LIMIT 2,
+1, 2; сортировка received_at DESC; cs.AI = source IN
+('arxiv_cs_ai','arxiv'), cs.LG = ('arxiv_cs_lg','arxiv_lg')).
+На запуск: 2 cs.AI + 1 cs.LG + 2 GitHub. Запросов к модели
+по-прежнему 5 на запуск (F12 соблюдён). До замены было: 5 записей
+на запуск, приоритет arXiv/hackernews; GitHub не получал оценок.
+Два PUT через Python (L7), каждый с L3-экспортом и проверкой F11:
+  1) 15.11 3 arXiv + 2 GitHub: e3f8dd52 → a850f62a;
+  2) 16.11 2 cs.AI + 1 cs.LG + 2 GitHub (cs.AI голодал, все слоты
+     занимал cs.LG): a850f62a → 0842dc06-6105-4fa3-9bc9-9a42a44df43a.
+Итог: versionId = activeVersionId = 0842dc06-..., active=True.
+Запуск 28804 (15.11 22:45 UTC): 5 записей, 2/1/2. НЕ измерено:
+соотношение на 3+ запусках; поведение при опустошении пула.
+Скрипты: ~/analyzer_queue_split.py (sha256
+6021a3ee67cbf0a8a1b4b6539e2b5593c1558e07fd560b86a9fb52ed71a9c832,
+144 / 6539) и ~/analyzer_queue_split2.py (sha256
+c5dbc85d30d2664464dcffb37d6170a2a25a9e3b78f3432baf7ddeb51944e3c0).
+L3-экспорт: ~/maia_project/backups/2026-11-15_pre_queue_split/
+wf_analyzer_pre_queue_split.json (27001 байт, 600, sha256
+3d22df43ba2bbbc151a44bd885712e2b2b1ba484f9246e4928b65ad9787b601d).
+Триггер «Cron 30sec»: scheduleTrigger, minutesInterval=15 → не
+более 96 запусков/сутки; потолок 480 модельных запросов/сутки.
+Факт за 7 суток (MS 466): 167 запусков (≈24/сутки), все success,
+≈120 запросов/сутки. Cointelegraph: 184 записи pending_review новый
+SQL не читает (прежний тоже не читал).
+
 ## N8N — СТАТУС ИСТОЧНИКОВ
  
-Приоритет источников в "PG Read pending" (CASE arxiv/hackernews →
-github_trending → остальное) поверх сортировки received_at DESC.
+⚠️ Устарело 16.11: приоритет «PG Read pending» заменён — см.
+«АРХИТЕКТУРА СКОРИНГА», подсекция «Очередь Analyzer с 16.11»
+(3 подзапроса UNION ALL: 2 cs.AI + 1 cs.LG + 2 GitHub).
  
 ⚠️ ИЗВЕСТНЫЙ ВОСПРОИЗВОДИМЫЙ БАГ (компенсируется watchdog): hours-
 интервальные Schedule Trigger не переустанавливают таймер после cold
@@ -450,9 +480,9 @@ pulse_insert, пробел между закрывающими скобками 
 выражениях (} }), чтобы splitExpression не резал по первой паре }}.
 Ручной запуск 28177: success, сводка за 2026-11-06 доставлена в
 Telegram, в pulse_log одна строка sent, новых failures нет.
-Расписание (минуты, интервал 30) включено Архитектором осознанно;
-по его слову он перед этим выключил Active и сделал ещё один
-прогон, состояние после этого командой не проверено ([СО СЛОВ]).
+Расписание (минуты, интервал 30). active=True подтверждено
+командой (MS 455, 15.11; vid=93dc2c77). [СО СЛОВ] повторный
+прогон Архитектора перед включением — командой не проверен.
 Экспорт v6: ~/maia_project/backups/wf_maia_pulse_20261103.json
 (16761 байт, права 600, sha256 afa286931595c42251a84d5152ed6adeb505d3807a2e85beead42b4389164351).
 Применены: ~/pulse_workflow_create_v8.py (sha256 083cf9a7e49b1360ebb397994d39e3d60fb473fdaed6f58614b639deb4d0b2e9, 407 строк / 23284 байт) и ~/pulse_workflow_update.py v3 (sha256 64847e98cf723012fe3cc317801ac673b98ed3c375e140a0efc9747862913014, 201 строка / 8776 байт). Прежние v7 и PUT v2 заменены, к применению не предназначены (путь ~/pulse_workflow_update.py перезаписан v3). В docstring PUT v3 остались упоминания «v7» (строки 9, 10, 119), только комментарии, поведение не меняют. Резервная копия v6 перед PUT: ~/maia_project/backups/wf_maia_pulse_before_update_20261109T225015.json (16819 байт, права 600).
@@ -483,7 +513,9 @@ Credentials: Postgres Vf0XETwZzK1j2um6, Telegram VfyxOKPqufFLW88j.
 пул — arxiv_cs_ai и arxiv_cs_lg (оценки новой модели с 26.10, без
 meta.groq.rescored, статусы relevant/irrelevant/processed, Announce
 Type не replace и не replace-cross, received_at не старше 7 суток,
-статьи нет в digest_log как sent); топ-15 по score без порога; при
+статьи нет в digest_log как sent); топ-15 по score без порога
+(фактический порог 16.11 = min score в топ-15 = 7; ниже 7 —
+403 из 592, 68%); при
 равных score cs.AI и cs.LG чередуются, внутри источника свежие
 вперёд; по понедельникам — проба из 3–5 случайных отсечённых
 статей (kind probe). Без LLM. Сообщение: parse_mode HTML,
@@ -516,10 +548,8 @@ SHA256SUMS; секретов 0; каталог 700).
 failures max id = 29 на 10.11 по отчёту АДМ MS 204; содержимое
 id 27–29 в отчёты не вошло — НЕИЗВЕСТНО.
 
-Расписание: [СО СЛОВ Архитектора] Active включён («Active включен,
-передавай контрольную точку АРХИВАТОРУ», 10.11.2026); командой
-состояние active не проверено. Первый выпуск по расписанию ожидается
-11.11 после 09:00; сегодняшний выпуск уже в журнале.
+Расписание: active=True подтверждено командой (MS 455, 15.11;
+vid=db91cbc9). Первый выпуск по расписанию — 11.11 после 09:00.
 
 ### Credential n8n — только id
 «MAIA Notifier Bot» — id VfyxOKPqufFLW88j, тип telegramApi.
@@ -614,10 +644,10 @@ failures max id = 34 на 15.11 (число строк таблицы не из�
 Ограничения: журнал ловит только ошибку запуска; пустой ответ
 источника без ошибки (например пустая лента arXiv 12.11) не
 ловится. errorWorkflow не прописан в Pulse, Digest, Analyzer,
-Enrich (у Analyzer свой журнал ошибок внутри). НЕ ПРОВЕРЕНО:
-срабатывание журнала на реальной ошибке сборщика; запуск сборщиков
-по расписанию (hoursInterval 2) после PUT, ожидался около 14.11
-23:00 UTC; проверить при ближайшем контроле.
+Enrich (у Analyzer свой журнал ошибок внутри). Запуск сборщиков
+по расписанию после PUT подтверждён 15.11 (запуск 21:00 UTC,
+все success). НЕ ПРОВЕРЕНО: срабатывание журнала на реальной
+ошибке сборщика.
 
 ## ДРУГИЕ ИСТОЧНИКИ
  
@@ -703,9 +733,18 @@ Postgres 15.17.
                        20:35:15, analyzer_parse, «Body error: A Timeout
                        Occurred» (до PUT v3). id 34 — 14.11,
                        test_collector (временный TEST workflow; см.
-                       «MAIA Error Logger и errorWorkflow»); max id 34
-                       на 15.11 по отчёту АДМ, число строк не
-                       измерялось. Схема по факту: id serial,
+                       «MAIA Error Logger и errorWorkflow»). id 40 —
+                       15.11 16:52:25, analyzer_openrouter, Node
+                       error: 503 (Nvidia overloaded); id 41 —
+                       15.11 20:15:20, openalex_enrich, getaddrinfo
+                       EAI_AGAIN api.openalex.org. max id 41 на
+                       15.11 по отчёту АДМ; число строк не
+                       измерялось. Наблюдение по запуску 28806
+                       (15.11 23:00 UTC, error): в failures ничего не
+                       появилось, причина НЕ установлена (хост
+                       выключался в момент запуска; гипотеза «таймаут
+                       модели» не подтверждена). Решение — наблюдать.
+                       Схема по факту: id serial,
                        action_hash text NULLABLE + UNIQUE, provider
                        text, error text, context JSON (НЕ jsonb),
                        timestamp without time zone default now().
