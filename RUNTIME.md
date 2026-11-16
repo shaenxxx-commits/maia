@@ -1,5 +1,5 @@
 # MAIA — RUNTIME
-Обновлён: 2026-11-15
+Обновлён: 2026-11-16
 Обновляет: КОНЦЕПТ после аудита / УЧ после значимой сессии
  
 ⚠️ Полная картина расхождений документ/реальность за 2026-07 →
@@ -171,9 +171,19 @@ maia-lab-sentinel — заглушка (tail -f /dev/null), RestartPolicy
                  unless-stopped. РЕШЕНО архивировать вместе с
                  docker-compose.lab.yml (АУДИТ ФАНТОМОВ) — физически
                  не выполнено.
-nc_glances     — веб-мониторинг хоста (порт 61208, 0.0.0.0), не
-                 завязан на MAIA. Решение: оставить, порт можно
-                 закрыть на localhost отдельным шагом (не выполнено).
+nc_glances     — веб-мониторинг хоста, порт только 127.0.0.1:61208
+                 (16.11 закрыт от сети; было 0.0.0.0). Не завязан
+                 на MAIA. Создан через docker run, не compose.
+                 Команда запуска (16.11, пересоздание):
+                   docker run -d --name nc_glances --restart unless-stopped \
+                     -p 127.0.0.1:61208:61208 \
+                     -v /var/run/docker.sock:/var/run/docker.sock:ro \
+                     nicolargo/glances:latest-full glances -w --enable-plugin docker
+                 Образ nicolargo/glances:latest-full; restart
+                 unless-stopped; томов нет, только docker.sock (ro).
+                 Inspect до правки: ~/maia_project/backups/
+                 2026-11-16_pre_glances_port/nc_glances_inspect.json,
+                 9365 байт, 600, sha256 111021353aae44aa93268e1403d9f7ce8a25f01b4d5f6859ac9317ecbc7f759a.
  
 Остановлены (RestartPolicy → no, 2026-10-01, данные в томах
 сохранены, судьба томов — отдельное решение):
@@ -988,7 +998,6 @@ incoming_messages снесён (включая крипто-контент), Coi
 ⚠️ watchdog_new.sh ("v2") — внедрить или архивировать
 ⚠️ Groq-логика в watchdog.sh — фантом
 ⚠️ maia-lab-sentinel — решение "архивировать" не выполнено
-⚠️ nc_glances — порт на localhost не закрыт
 ⚠️ LibreChat (5 контейнеров) остановлена, судьба томов не решена;
    том portainer_data без контейнера
 ⚠️ notify_news_loop/mtime nc_core.py расхождение — не расследовано
@@ -1034,3 +1043,4 @@ AUDIT_2026-09-ФАНТОМЫ.md):
   ✅ Первая живая запись в paper_entities и постоянный enrichment
      запущены (07-08.10)
   ✅ Вопрос "журнал попыток" закрыт: не строить (12.10)
+  ✅ nc_glances: порт 61208 закрыт на 127.0.0.1 (16.11)
